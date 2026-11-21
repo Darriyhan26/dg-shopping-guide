@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="DG Guide">
+<title>DG Shopping Guide</title>
+<style>
+  :root { --yellow:#ffd500; --black:#1b1b1b; --green:#1f9d55; --bg:#f4f4f2; --card:#fff; --muted:#6b6b6b; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; background:var(--bg); color:var(--black); padding-bottom:env(safe-area-inset-bottom); }
+  header { position:sticky; top:0; z-index:10; background:var(--black); color:#fff; padding:10px 12px 0; padding-top:calc(10px + env(safe-area-inset-top)); }
+  .top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  h1 { font-size:18px; margin:0; }
+  .count { background:var(--yellow); color:var(--black); font-weight:700; border-radius:999px; padding:4px 12px; font-size:14px; white-space:nowrap; }
+  .tools { display:flex; gap:8px; margin:8px 0; }
+  .tools input[type=search] { flex:1; min-width:0; padding:10px 12px; border-radius:10px; border:0; font-size:16px; }
+  .tools button { border:0; border-radius:10px; padding:0 12px; font-size:14px; font-weight:600; background:#444; color:#fff; }
+  .tools button.on { background:var(--yellow); color:var(--black); }
+  .chips { display:flex; gap:8px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .chip { flex:0 0 auto; background:#333; color:#fff; border:0; border-radius:999px; padding:8px 14px; font-size:14px; font-weight:600; }
+  .chip.done { background:var(--green); }
+  .chip small { opacity:.8; font-weight:500; margin-left:4px; }
+  main { padding:10px 10px 80px; }
+  section { margin-bottom:18px; scroll-margin-top:150px; }
+  .sec-head { display:flex; align-items:center; justify-content:space-between; padding:8px 4px; cursor:pointer; user-select:none; }
+  .sec-head h2 { font-size:18px; margin:0; }
+  .sec-head span { font-size:14px; color:var(--muted); font-weight:600; }
+  html, body { overflow-x:hidden; max-width:100%; }
+  .grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+  @media (min-width:700px) { .grid { grid-template-columns:repeat(4, minmax(0, 1fr)); } }
+  .collapsed .grid { display:none; }
+  .card { position:relative; background:var(--card); border-radius:14px; padding:8px; box-shadow:0 1px 3px rgba(0,0,0,.12); border:3px solid transparent; }
+  .card.found { opacity:.45; border-color:var(--green); }
+  .card .photo { width:100%; aspect-ratio:1/1; border-radius:10px; background:#eee; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+  .card .photo img { width:100%; height:100%; object-fit:contain; }
+  .card .photo .ph { font-size:12px; color:var(--muted); text-align:center; padding:8px; }
+  .card .name { font-size:14px; font-weight:600; line-height:1.25; margin:8px 2px 4px; min-height:2.5em; }
+  .card .meta { font-size:12px; color:var(--muted); margin:0 2px; line-height:1.4; word-break:break-all; }
+  .card .meta b { color:var(--black); font-variant-numeric:tabular-nums; }
+  .card .qty { position:absolute; top:12px; left:12px; background:var(--black); color:#fff; border-radius:999px; font-size:12px; font-weight:700; padding:2px 8px; }
+  .card .check { position:absolute; top:12px; right:12px; width:28px; height:28px; border-radius:50%; background:#fff; border:2px solid #bbb; display:flex; align-items:center; justify-content:center; font-size:18px; color:#fff; }
+  .card.found .check { background:var(--green); border-color:var(--green); }
+  .card .zoom { position:absolute; bottom:8px; right:8px; border:0; background:#eee; border-radius:8px; width:32px; height:32px; font-size:16px; }
+  .empty { text-align:center; color:var(--muted); padding:40px 10px; }
+  footer { text-align:center; color:var(--muted); font-size:12px; padding:0 10px 30px; }
+  footer button { border:0; background:none; color:var(--muted); text-decoration:underline; font-size:12px; }
+  #modal { position:fixed; inset:0; background:rgba(0,0,0,.75); display:none; align-items:center; justify-content:center; z-index:20; padding:16px; }
+  #modal.open { display:flex; }
+  #modal .box { background:#fff; border-radius:16px; max-width:420px; width:100%; padding:14px; max-height:92vh; overflow:auto; }
+  #modal img { width:100%; border-radius:10px; background:#eee; }
+  #modal h3 { margin:10px 0 6px; font-size:17px; }
+  #modal p { margin:4px 0; font-size:14px; }
+  #modal .upc { font-size:22px; font-weight:700; letter-spacing:1px; font-variant-numeric:tabular-nums; }
+  #modal a, #modal button { display:inline-block; margin:10px 8px 0 0; padding:10px 14px; border-radius:10px; border:0; background:var(--black); color:#fff; font-size:14px; text-decoration:none; }
+</style>
+</head>
+<body>
+<header>
+  <div class="top"><h1>DG Shopping Guide</h1><div class="count" id="count"></div></div>
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search items, UPC, item #" autocomplete="off">
+    <button id="need">Need only</button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+<main id="main"></main>
+<footer><button id="reset">Clear all check marks</button></footer>
+<div id="modal"><div class="box" id="box"></div></div>
+
+<!-- Items live in items.js (one item per entry). Add new entries there. -->
+<script src="items.js"></script>
+<script>
+(function () {
+  var ITEMS = window.DG_ITEMS || [];
+  var KEY = "dg-found-v1";
+  var found = {};
+  try { found = JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) {}
+  var collapsed = {};
+  var needOnly = false;
+  var query = "";
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(found)); } catch (e) {} }
+  function key(it) { return String(it.dg_id || it.id); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function slug(s) { return "sec-" + s.toLowerCase().replace(/[^a-z0-9]+/g, "-"); }
+
+  function categories() {
+    var order = [], seen = {};
+    ITEMS.forEach(function (it) { if (!seen[it.category]) { seen[it.category] = 1; order.push(it.category); } });
+    return order;
+  }
+  function matches(it) {
+    if (needOnly && found[key(it)]) return false;
+    if (!query) return true;
+    var hay = [it.name, it.brand, it.upc, it.sku, it.category].join(" ").toLowerCase();
+    return hay.indexOf(query) !== -1;
+  }
+
+  function render() {
+    var main = document.getElementById("main");
+    var chips = document.getElementById("chips");
+    main.textContent = ""; chips.textContent = "";
+    var total = ITEMS.length, got = ITEMS.filter(function (i) { return found[key(i)]; }).length;
+    document.getElementById("count").textContent = got + " / " + total + " found";
+    var shown = 0;
+
+    categories().forEach(function (cat) {
+      var all = ITEMS.filter(function (i) { return i.category === cat; });
+      var vis = all.filter(matches);
+      var done = all.filter(function (i) { return found[key(i)]; }).length;
+
+      var chip = el("button", "chip" + (done === all.length ? " done" : ""), cat);
+      chip.appendChild(el("small", "", done + "/" + all.length));
+      chip.onclick = function () { var s = document.getElementById(slug(cat)); if (s) { collapsed[cat] = false; render(); document.getElementById(slug(cat)).scrollIntoView({ behavior: "smooth" }); } };
+      chips.appendChild(chip);
+
+      if (!vis.length) return;
+      shown += vis.length;
+      var sec = el("section", collapsed[cat] ? "collapsed" : "");
+      sec.id = slug(cat);
+      var head = el("div", "sec-head");
+      head.appendChild(el("h2", "", cat));
+      head.appendChild(el("span", "", done + " of " + all.length + " found " + (collapsed[cat] ? "▸" : "▾")));
+      head.onclick = function () { collapsed[cat] = !collapsed[cat]; render(); };
+      sec.appendChild(head);
+      var grid = el("div", "grid");
+      vis.forEach(function (it) { grid.appendChild(card(it)); });
+      sec.appendChild(grid);
+      main.appendChild(sec);
+    });
+    if (!shown) main.appendChild(el("div", "empty", needOnly && !query ? "Everything is found. Nice work!" : "No items match."));
+  }
+
+  function card(it) {
+    var c = el("div", "card" + (found[key(it)] ? " found" : ""));
+    var photo = el("div", "photo");
+    if (it.image) { var im = el("img"); im.src = it.image; im.alt = it.name; im.loading = "lazy"; im.onerror = function () { photo.textContent = ""; photo.appendChild(el("div", "ph", "No photo")); }; photo.appendChild(im); }
+    else photo.appendChild(el("div", "ph", "No photo"));
+    c.appendChild(photo);
+    if ((it.qty || 1) > 1) c.appendChild(el("div", "qty", "×" + it.qty));
+    c.appendChild(el("div", "check", found[key(it)] ? "✓" : ""));
+    c.appendChild(el("div", "name", it.name));
+    var meta = el("div", "meta");
+    var u = el("div"); u.appendChild(document.createTextNode("UPC ")); u.appendChild(el("b", "", it.upc || "not found")); if (it.upc_note) u.appendChild(document.createTextNode(" *")); meta.appendChild(u);
+    if (it.sku) { var s = el("div"); s.appendChild(document.createTextNode("Item # ")); s.appendChild(el("b", "", it.sku)); meta.appendChild(s); }
+    c.appendChild(meta);
+    var z = el("button", "zoom", "🔍");
+    z.setAttribute("aria-label", "Show bigger photo and details");
+    z.onclick = function (e) { e.stopPropagation(); openModal(it); };
+    c.appendChild(z);
+    c.onclick = function () { if (found[key(it)]) delete found[key(it)]; else found[key(it)] = 1; save(); render(); };
+    return c;
+  }
+
+  function openModal(it) {
+    var box = document.getElementById("box"); box.textContent = "";
+    if (it.image) { var im = el("img"); im.src = it.image; box.appendChild(im); }
+    box.appendChild(el("h3", "", it.name));
+    if (it.brand) box.appendChild(el("p", "", "Brand: " + it.brand));
+    box.appendChild(el("p", "", "Section: " + it.category));
+    box.appendChild(el("p", "upc", it.upc || "UPC not found"));
+    if (it.sku) box.appendChild(el("p", "", "Item #: " + it.sku));
+    if (it.upc_note) box.appendChild(el("p", "", "* " + it.upc_note + "."));
+    if (it.url) { var a = el("a", "", "Dollar General page"); a.href = it.url; a.target = "_blank"; a.rel = "noopener"; box.appendChild(a); }
+    var b = el("button", "", "Close"); b.onclick = closeModal; box.appendChild(b);
+    document.getElementById("modal").classList.add("open");
+  }
+  function closeModal() { document.getElementById("modal").classList.remove("open"); }
+  document.getElementById("modal").onclick = function (e) { if (e.target.id === "modal") closeModal(); };
+
+  document.getElementById("q").oninput = function (e) { query = e.target.value.trim().toLowerCase(); render(); };
+  document.getElementById("need").onclick = function (e) { needOnly = !needOnly; e.target.classList.toggle("on", needOnly); render(); };
+  document.getElementById("reset").onclick = function () { if (confirm("Clear every check mark?")) { found = {}; save(); render(); } };
+  render();
+})();
+</script>
+</body>
+</html>
